@@ -1,0 +1,414 @@
+-- AUTO FARMING | OASISUI
+-- Tabs: MAIN, PLAYER, PVP, VISUAL, MISC, COMBAT
+-- Combat controls are UI-only practice settings for NPC training.
+-- No player-targeting silent-aim/network hooks are included.
+
+local OasisUI = loadstring(game:HttpGet(
+    "https://github.com/Mold53/OasisUI/releases/download/v1.6.0/OasisUI.lua"
+))()
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local Window = OasisUI:CreateWindow({
+    Title = "AUTO FARMING",
+    Subtitle = "PREMIUM HUB",
+    Folder = "AutoFarming",
+    Theme = "Midnight",
+    Size = UDim2.fromOffset(760, 520),
+    ToggleKey = Enum.KeyCode.RightShift,
+    Search = true,
+    Settings = true,
+    AutoSave = true,
+    DefaultConfig = "default",
+    GuiName = "AutoFarming"
+})
+
+-- MAIN
+local Main = Window:Tab({
+    Title = "MAIN",
+    Icon = "house",
+    Columns = 2
+})
+
+local Dashboard = Main:Module({
+    Title = "Dashboard",
+    Icon = "layout-dashboard",
+    Default = true
+})
+
+Dashboard:Label({
+    Text = "AUTO FARMING",
+    Value = "ONLINE"
+})
+
+Dashboard:Paragraph({
+    Title = "Welcome",
+    Content = "Bienvenido a AUTO FARMING PREMIUM."
+})
+
+Dashboard:Button({
+    Title = "Refresh Character",
+    Icon = "refresh-cw",
+    Callback = function()
+        local character = LocalPlayer.Character
+        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.Health = humanoid.MaxHealth
+        end
+    end
+})
+
+-- PLAYER
+local PlayerTab = Window:Tab({
+    Title = "PLAYER",
+    Icon = "user",
+    Columns = 2
+})
+
+local Movement = PlayerTab:Module({
+    Title = "Movement",
+    Icon = "footprints"
+})
+
+Movement:Slider({
+    Title = "WalkSpeed",
+    Min = 16,
+    Max = 100,
+    Default = 16,
+    Callback = function(value)
+        local humanoid = LocalPlayer.Character
+            and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = value
+        end
+    end
+})
+
+Movement:Slider({
+    Title = "JumpPower",
+    Min = 50,
+    Max = 150,
+    Default = 50,
+    Callback = function(value)
+        local humanoid = LocalPlayer.Character
+            and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.UseJumpPower = true
+            humanoid.JumpPower = value
+        end
+    end
+})
+
+-- PVP
+local PVP = Window:Tab({
+    Title = "PVP",
+    Icon = "swords",
+    Columns = 2
+})
+
+local CombatPractice = PVP:Module({
+    Title = "Combat Practice",
+    Icon = "crosshair"
+})
+
+CombatPractice:Button({
+    Title = "Practice Shoot",
+    Icon = "target",
+    Callback = function()
+        local character = LocalPlayer.Character
+        local tool = character and character:FindFirstChildOfClass("Tool")
+        if tool then
+            tool:Activate()
+        end
+    end
+})
+
+CombatPractice:Paragraph({
+    Title = "Training",
+    Content = "Practica tu punteria en zonas de entrenamiento."
+})
+
+-- VISUAL
+local Visual = Window:Tab({
+    Title = "VISUAL",
+    Icon = "eye",
+    Columns = 2
+})
+
+local VisualModule = Visual:Module({
+    Title = "Interface",
+    Icon = "monitor"
+})
+
+VisualModule:Paragraph({
+    Title = "Visual Settings",
+    Content = "Opciones visuales de la interfaz."
+})
+
+VisualModule:Button({
+    Title = "Blue Theme",
+    Icon = "palette",
+    Callback = function()
+        OasisUI:SetAccent(Color3.fromRGB(35, 130, 255))
+    end
+})
+
+VisualModule:Button({
+    Title = "Purple Theme",
+    Icon = "palette",
+    Callback = function()
+        OasisUI:SetAccent(Color3.fromRGB(155, 75, 255))
+    end
+})
+
+VisualModule:Button({
+    Title = "Red Theme",
+    Icon = "palette",
+    Callback = function()
+        OasisUI:SetAccent(Color3.fromRGB(240, 65, 65))
+    end
+})
+-- CAR
+local CarTab = Window:Tab({
+    Title = "CAR",
+    Icon = "car",
+    Columns = 2
+})
+
+local CarSettings = {
+    DriveStable = false,
+    StableSpeed = 1,
+    KeepFOV = true
+}
+
+local CarModule = CarTab:Module({
+    Title = "Vehicle Control",
+    Icon = "car"
+})
+
+CarModule:Paragraph({
+    Title = "OPPS CAR",
+    Content = "Vehicle stability and camera settings."
+})
+
+CarModule:Toggle({
+    Title = "Drive Stable",
+    Description = "Reduce la inclinación del vehículo",
+    Default = false,
+    Flag = "DriveStable",
+    Callback = function(value)
+        CarSettings.DriveStable = value
+    end
+})
+
+CarModule:Slider({
+    Title = "Stable Speed",
+    Min = 0.5,
+    Max = 2,
+    Default = 1,
+    Step = 0.05,
+    Flag = "StableCarSpeed",
+    Callback = function(value)
+        CarSettings.StableSpeed = value
+    end
+})
+
+CarModule:Toggle({
+    Title = "Keep FOV Normal",
+    Description = "Mantiene el FOV en 70 al conducir",
+    Default = true,
+    Flag = "KeepCarFOV",
+    Callback = function(value)
+        CarSettings.KeepFOV = value
+    end
+})
+
+local OriginalCarSpeeds = {}
+local OriginalFOV = nil
+
+RunService.Heartbeat:Connect(function()
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    local seat = humanoid and humanoid.SeatPart
+    local driving = seat and seat:IsA("VehicleSeat")
+
+    -- Restaurar velocidad anterior
+    for oldSeat, oldSpeed in pairs(OriginalCarSpeeds) do
+        if not oldSeat.Parent or oldSeat ~= seat then
+            pcall(function()
+                oldSeat.MaxSpeed = oldSpeed
+            end)
+            OriginalCarSpeeds[oldSeat] = nil
+        end
+    end
+
+    if driving then
+        if OriginalCarSpeeds[seat] == nil then
+            OriginalCarSpeeds[seat] = seat.MaxSpeed
+        end
+
+        -- Stable Speed
+        pcall(function()
+            seat.MaxSpeed =
+                OriginalCarSpeeds[seat] * CarSettings.StableSpeed
+        end)
+
+        -- Drive Stable
+        if CarSettings.DriveStable then
+            local root = seat.AssemblyRootPart or seat
+            local angular = root.AssemblyAngularVelocity
+
+            pcall(function()
+                root.AssemblyAngularVelocity = Vector3.new(
+                    0,
+                    angular.Y,
+                    0
+                )
+            end)
+        end
+    end
+
+    -- Keep FOV Normal
+    local camera = workspace.CurrentCamera
+
+    if camera then
+        if CarSettings.KeepFOV and driving then
+            if OriginalFOV == nil then
+                OriginalFOV = camera.FieldOfView
+            end
+
+            camera.FieldOfView = 70
+        elseif OriginalFOV ~= nil then
+            camera.FieldOfView = OriginalFOV
+            OriginalFOV = nil
+        end
+    end
+end)
+-- MISC
+local Misc = Window:Tab({
+    Title = "MISC",
+    Icon = "package",
+    Columns = 2
+})
+
+local MiscModule = Misc:Module({
+    Title = "Extra",
+    Icon = "layers"
+})
+
+MiscModule:Button({
+    Title = "Reset Character",
+    Icon = "refresh-cw",
+    Confirm = true,
+    Callback = function()
+        local character = LocalPlayer.Character
+        if character then
+            character:BreakJoints()
+        end
+    end
+})
+
+MiscModule:Paragraph({
+    Title = "Information",
+    Content = "AUTO FARMING | OASIS UI"
+})
+
+-- COMBAT
+-- These controls store practice preferences only. They do not hook
+-- weapon/network calls or redirect shots toward real players.
+local CombatTab = Window:Tab({
+    Title = "COMBAT",
+    Icon = "crosshair",
+    Columns = 2
+})
+
+local CombatSettings = {
+    NPCAimAssist = false,
+    FOV = 120,
+    ShowFOV = false,
+    AimPart = "Head",
+    Prediction = false,
+    Smoothness = 75
+}
+
+local AimModule = CombatTab:Module({
+    Title = "Combat Practice",
+    Description = "Practice settings for NPC training targets",
+    Icon = "target"
+})
+
+AimModule:Toggle({
+    Title = "NPC Aim Assist",
+    Description = "Practice preference toggle for NPC targets",
+    Default = false,
+    Flag = "NPCAimAssist",
+    Callback = function(value)
+        CombatSettings.NPCAimAssist = value
+    end
+})
+
+AimModule:Slider({
+    Title = "FOV",
+    Min = 20,
+    Max = 800,
+    Default = 120,
+    Step = 1,
+    Flag = "CombatFOV",
+    Callback = function(value)
+        CombatSettings.FOV = value
+    end
+})
+
+AimModule:Toggle({
+    Title = "Show FOV",
+    Default = false,
+    Flag = "ShowCombatFOV",
+    Callback = function(value)
+        CombatSettings.ShowFOV = value
+    end
+})
+
+AimModule:Dropdown({
+    Title = "Aim Part",
+    Values = {"Head", "Body"},
+    Default = "Head",
+    Multi = false,
+    Flag = "CombatAimPart",
+    Callback = function(value)
+        CombatSettings.AimPart = value
+    end
+})
+
+local ExtraCombat = CombatTab:Module({
+    Title = "Advanced Practice",
+    Description = "Additional NPC training preferences",
+    Icon = "settings-2"
+})
+
+ExtraCombat:Toggle({
+    Title = "Prediction",
+    Default = false,
+    Flag = "CombatPrediction",
+    Callback = function(value)
+        CombatSettings.Prediction = value
+    end
+})
+
+ExtraCombat:Slider({
+    Title = "Smoothness",
+    Min = 1,
+    Max = 100,
+    Default = 75,
+    Step = 1,
+    Flag = "CombatSmoothness",
+    Callback = function(value)
+        CombatSettings.Smoothness = value
+    end
+})
+
+-- SETTINGS is supplied by OasisUI when Settings = true.
+OasisUI:SetAccent(Color3.fromRGB(35, 130, 255))
+Window:SetWatermark("AUTO FARMING | PREMIUM")
+Window:SelectTab(Main)
